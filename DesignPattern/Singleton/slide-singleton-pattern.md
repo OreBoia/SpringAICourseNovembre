@@ -152,14 +152,144 @@ public class App {
 
 **Consegna:** scrivi una classe `Termostato` con un campo `double temperatura` (valore iniziale 20.0) e i metodi `getTemperatura()` e `setTemperatura(double)`. Il costruttore deve essere privato e l'accesso passa solo da `getInstance()`. Dimostra che due riferimenti ottenuti con `getInstance()` vedono lo stesso valore dopo un `setTemperatura(22.5)`.
 
+**Soluzione:**
+
+```java
+class Termostato {
+    private static final Termostato INSTANCE = new Termostato();  // unica istanza
+
+    private double temperatura = 20.0;
+
+    private Termostato() { }                                      // nessuno può fare new
+
+    static Termostato getInstance() {
+        return INSTANCE;
+    }
+
+    double getTemperatura() { return temperatura; }
+    void setTemperatura(double t) { temperatura = t; }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Termostato a = Termostato.getInstance();
+        Termostato b = Termostato.getInstance();
+
+        System.out.println(a.getTemperatura());  // 20.0
+        a.setTemperatura(22.5);                  // modifico tramite a...
+        System.out.println(b.getTemperatura());  // ...e b vede 22.5
+        System.out.println(a == b);              // true: stesso oggetto
+    }
+}
+```
+
+Output:
+
+```text
+20.0
+22.5
+true
+```
+
+- Il costruttore `private` impedisce di creare altri `Termostato` dall'esterno.
+- `a` e `b` puntano allo stesso oggetto, quindi la modifica fatta con `a` è visibile anche con `b`.
+
 ### Medio
 
 **Obiettivo:** creare un singleton con `enum` che gestisce un credito e proteggerlo dall'accesso concorrente.
 
 **Consegna:** un distributore di bevande ha un unico credito in euro. Scrivi un `enum Distributore` con `INSTANCE`, i metodi `inserisci(double)` e `eroga(double prezzo)`. `eroga` deve restituire `true` e scalare il credito solo se il credito basta, altrimenti `false`. Rendi i metodi `synchronized` e verifica il risultato con tre chiamate: inserisci 5 euro, eroga 2 euro, eroga 4 euro.
 
+**Soluzione:**
+
+```java
+enum Distributore {
+    INSTANCE;
+
+    private double credito = 0.0;
+
+    public synchronized void inserisci(double importo) {
+        credito += importo;
+    }
+
+    public synchronized boolean eroga(double prezzo) {
+        if (credito >= prezzo) {          // il credito basta
+            credito -= prezzo;
+            return true;
+        }
+        return false;                     // credito insufficiente: nessuna modifica
+    }
+
+    public synchronized double getCredito() {
+        return credito;
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Distributore.INSTANCE.inserisci(5);
+        System.out.println(Distributore.INSTANCE.eroga(2));          // true: credito 5 → 3
+        System.out.println(Distributore.INSTANCE.eroga(4));          // false: 3 non basta
+        System.out.println(Distributore.INSTANCE.getCredito());      // 3.0
+    }
+}
+```
+
+Output:
+
+```text
+true
+false
+3.0
+```
+
+- `eroga` controlla il credito e lo scala nello stesso blocco `synchronized`: due thread non possono spendere lo stesso credito due volte.
+- Il secondo `eroga(4)` restituisce `false` e il credito resta invariato.
+
 ### Difficile
 
 **Obiettivo:** usare la lazy initialization con l'idioma *holder*, che crea l'istanza solo quando serve.
 
 **Consegna:** una stampante ha un lettore di impostazioni che legge un file pesante. Scrivi una classe `LettoreImpostazioni` con una classe interna statica `Holder` che contiene `static final LettoreImpostazioni INSTANCE = new LettoreImpostazioni();`. Aggiungi un messaggio nel costruttore, del tipo `"Lettura file impostazioni..."`. Dimostra che il messaggio compare una sola volta, alla prima chiamata di `getInstance()`, e non alla caricamento della classe esterna.
+
+**Soluzione:**
+
+```java
+class LettoreImpostazioni {
+
+    private LettoreImpostazioni() {
+        System.out.println("Lettura file impostazioni...");   // eseguito solo alla creazione
+    }
+
+    private static class Holder {
+        static final LettoreImpostazioni INSTANCE = new LettoreImpostazioni();
+    }
+
+    public static LettoreImpostazioni getInstance() {
+        return Holder.INSTANCE;           // Holder viene caricata solo qui
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Programma avviato");          // il lettore non è ancora stato creato
+
+        LettoreImpostazioni a = LettoreImpostazioni.getInstance();  // qui parte la lettura
+        LettoreImpostazioni b = LettoreImpostazioni.getInstance();  // nessun nuovo messaggio
+
+        System.out.println(a == b);                       // true
+    }
+}
+```
+
+Output:
+
+```text
+Programma avviato
+Lettura file impostazioni...
+true
+```
+
+- La classe interna `Holder` non viene caricata quando si carica `LettoreImpostazioni`: viene caricata alla prima chiamata di `getInstance()`.
+- Il messaggio compare una sola volta, perché la JVM crea `INSTANCE` una sola volta e la riusa nelle chiamate successive.
+- La JVM garantisce anche la sicurezza nei thread durante l'inizializzazione della classe `Holder`, senza `synchronized`.
