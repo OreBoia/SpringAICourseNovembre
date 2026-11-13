@@ -243,9 +243,9 @@ public class Main{
 
 ### Medio
 
-**Obiettivo:** usare `@EventListener` con `condition` per filtrare gli eventi.
+**Obiettivo:** implementare `Subject` e `Observer` in Java puro, e filtrare gli eventi dentro un osservatore.
 
-**Consegna:** una palestra registra ogni ingresso di un socio con l'evento `IngressoSocio(String nome, boolean abbonamentoScaduto)`. Un listener stampa un messaggio per ogni ingresso. Un secondo listener, con `condition`, avvisa la reception solo per gli abbonamenti scaduti. Scrivi il servizio che pubblica l'evento e prova con tre ingressi: un socio regolare, un socio con abbonamento scaduto, un altro socio regolare.
+**Consegna:** una palestra registra ogni ingresso di un socio. Crea l'interfaccia `Observer`, con il metodo `update(IngressoSocio evento)`, e l'interfaccia `Subject`, con `addObserver`, `removeObserver` e `notifyObservers(IngressoSocio evento)`. L'evento è il record `IngressoSocio(String nome, boolean abbonamentoScaduto)`. Scrivi la classe `Palestra` che implementa `Subject` e ha il metodo `registraIngresso(String nome, boolean abbonamentoScaduto)`: crea l'evento e avvisa gli osservatori. Scrivi due osservatori concreti: `Log`, che stampa ogni ingresso, e `Reception`, che stampa un avviso solo se l'abbonamento è scaduto (il filtro si fa con un `if` dentro `update`). Nel `main` iscrivi entrambi e registra tre ingressi: un socio regolare, un socio con abbonamento scaduto, un altro socio regolare. Poi rimuovi `Reception` con `removeObserver` e registra un altro socio con abbonamento scaduto: deve comparire solo il messaggio di `Log`.
 
 ### Difficile
 
