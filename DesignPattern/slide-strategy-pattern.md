@@ -160,6 +160,59 @@ class Botteghino {
 - Ogni strategia decide da sola se si applica (`applicabile`).
 - La strategia di fallback senza condizioni evita il caso "nessuna tariffa trovata".
 
+### Extra - Context
+
+Cosa mostra: uitlizzo di una classe context come intermediario tra il client (main o altra classe/metodo) e le strategie da applicare.
+
+```java
+import java.util.Arrays;
+
+// Strategy Interface (Abstract Class)
+interface SortingStrategy {
+    void sort(String[] arr, int size); // pure virtual function
+}
+
+// Context Class
+class SortingContext {
+    private SortingStrategy sortingStrategy;
+
+    // Constructor
+    public SortingContext(SortingStrategy strategy) {
+        this.sortingStrategy = strategy;
+    }
+
+    // Setter to change strategy
+    public void setSortingStrategy(SortingStrategy strategy) {
+        this.sortingStrategy = strategy;
+    }
+
+    // Perform sort
+    public void performSort(String[] arr, int size) {
+        if (sortingStrategy!= null)
+            sortingStrategy.sort(arr, size);
+    }
+}
+
+// Example concrete strategy
+class AlphabeticalSort implements SortingStrategy {
+    @Override
+    public void sort(String[] arr, int size) {
+        Arrays.sort(arr);
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        // Create SortingContext with BubbleSortStrategy
+        SortingContext sortingContext = new SortingContext(new AlphabeticalSort());
+        String[] array1 = {"cpp","c","java","python3","csharp","html","css","javascript","php","cpp14","cobol","dart","go","julia","kotlin","lisp","matlab","node","objc","perl","r","rust","ruby","scala","swift","solidity","xml"};
+        sortingContext.performSort(array1); // Output: Sorting using Bubble Sort
+```
+
+- l'interfaccia e le classi concrete non cambiano da prima. Viene solo aggiunta una classe **"_Context"**.
+- **SortingContext**: la classe che si occupa di gestire la strategia attualmente in utilizzo e di applicare le su funzioni.
+- **Client**: non richiama direttamente la strategia, ma si occupa comunque di crearla e di mandarla al **Contex**. Alla fine quello che utilizza non è direttamente la *strategy* ma il *context*.
+
 ## Esercizi
 
 ### Facile
