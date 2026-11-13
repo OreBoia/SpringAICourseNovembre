@@ -221,14 +221,210 @@ public class Client {
 
 **Consegna:** un parcheggio calcola il costo in due modi: tariffa oraria a 2 euro l'ora oppure tariffa giornaliera fissa a 10 euro. Scrivi l'interfaccia e le due strategie, poi stampa il costo di 5 ore con ciascuna.
 
+**Soluzione:**
+
+```java
+interface TariffaParcheggio {
+    double costo(int ore);
+}
+
+class TariffaOraria implements TariffaParcheggio {
+    public double costo(int ore) { return ore * 2.0; }
+}
+
+class TariffaGiornaliera implements TariffaParcheggio {
+    public double costo(int ore) { return 10.0; }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        TariffaParcheggio oraria = new TariffaOraria();
+        TariffaParcheggio giornaliera = new TariffaGiornaliera();
+
+        System.out.println(oraria.costo(5));       // 10.0
+        System.out.println(giornaliera.costo(5));  // 10.0
+    }
+}
+```
+
+Output:
+
+```text
+10.0
+10.0
+```
+
+- Entrambe le strategie implementano `TariffaParcheggio`: il `main` le usa senza sapere come viene calcolato il costo.
+- A 5 ore le due tariffe costano uguali (10 euro). Oltre 5 ore conviene la giornaliera, sotto conviene l'oraria.
+
 ### Medio
 
 **Obiettivo:** usare una lista di strategie in Java puro, applicandole in sequenza.
 
 **Consegna:** scrivi un'interfaccia `Formattazione` con il metodo `String applica(String testo)`. Crea tre strategie: tutto maiuscolo, ogni parola con la prima lettera maiuscola, testo al contrario. Applica tutte e tre alla stessa frase, una dopo l'altra, e stampa ogni risultato su una riga.
 
+**Soluzione:**
+
+```java
+interface Formattazione {
+    String applica(String testo);
+}
+
+class Maiuscolo implements Formattazione {
+    public String applica(String testo) {
+        return testo.toUpperCase();
+    }
+}
+
+class PrimaMaiuscola implements Formattazione {
+    public String applica(String testo) {
+        return Arrays.stream(testo.split(" "))
+                .map(p -> p.substring(0, 1).toUpperCase() + p.substring(1).toLowerCase())
+                .collect(Collectors.joining(" "));
+    }
+}
+
+class AlRovescio implements Formattazione {
+    public String applica(String testo) {
+        return new StringBuilder(testo).reverse().toString();
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        List<Formattazione> strategie = List.of(new Maiuscolo(), new PrimaMaiuscola(), new AlRovescio());
+        String frase = "la strategia cambia senza toccare il codice";
+
+        for (Formattazione f : strategie) {
+            System.out.println(f.applica(frase));   // stessa frase, una strategia alla volta
+        }
+    }
+}
+```
+
+Output:
+
+```text
+LA STRATEGIA CAMBIA SENZA TOCCARE IL CODICE
+La Strategia Cambia Senza Toccare Il Codice
+ecidoc li eraccot aznes aibmac aigetarts al
+```
+
+- La lista `strategie` contiene le tre implementazioni: il ciclo non sa quale formattazione sta applicando.
+- Ogni strategia riceve la frase originale, quindi i risultati sono indipendenti tra loro.
+- Per aggiungere una formattazione basta una nuova classe e aggiungerla alla lista.
+
 ### Difficile
 
 **Obiettivo:** usare Spring per scegliere una strategia tra più bean, con un fallback.
 
 **Consegna:** un call center assegna una chiamata a un operatore con tre strategie: *meno occupato*, *a rotazione* e *per competenza*. Ogni strategia è un bean `@Component` con `@Order`. Il servizio `Assegnazione` riceve la lista e usa la prima strategia applicabile. Se nessun operatore è libero, la strategia di fallback deve restituire un messaggio di coda d'attesa e non lasciare il servizio senza risposta.
+
+**Soluzione:**
+
+Spring inietta le strategie come `List<StrategiaAssegnazione>` già ordinata per `@Order`. Per rendere distinguibili le tre strategie generiche, la chiamata ha un flag `prioritaria`: le chiamate prioritarie vanno al meno occupato, le altre a rotazione. Un operatore è *disponibile* se ha meno di 2 chiamate attive. (Import omessi.)
+
+```java
+public record Chiamata(String cliente, String competenza, boolean prioritaria) { }
+
+public record Operatore(String nome, String competenza, int chiamateAttive) {
+    static final int MAX_CHIAMATE = 2;                       // capacità massima di un operatore
+    boolean disponibile() { return chiamateAttive < MAX_CHIAMATE; }
+}
+
+public interface StrategiaAssegnazione {
+    boolean applicabile(Chiamata c, List<Operatore> operatori);
+    String assegna(Chiamata c, List<Operatore> operatori);
+
+    default List<Operatore> disponibili(List<Operatore> operatori) {
+        return operatori.stream().filter(Operatore::disponibile).toList();
+    }
+
+    default String assegnata(Chiamata c, Operatore op) {
+        return "Chiamata di " + c.cliente() + " assegnata a " + op.nome();
+    }
+}
+
+@Component
+@Order(1)                                                    // la più specifica: prima di tutte
+class PerCompetenza implements StrategiaAssegnazione {
+    public boolean applicabile(Chiamata c, List<Operatore> operatori) {
+        return c.competenza() != null && disponibili(operatori).stream()
+                .anyMatch(o -> o.competenza().equals(c.competenza()));
+    }
+    public String assegna(Chiamata c, List<Operatore> operatori) {
+        Operatore op = disponibili(operatori).stream()
+                .filter(o -> o.competenza().equals(c.competenza()))
+                .findFirst().orElseThrow();
+        return assegnata(c, op);
+    }
+}
+
+@Component
+@Order(2)
+class MenoOccupato implements StrategiaAssegnazione {
+    public boolean applicabile(Chiamata c, List<Operatore> operatori) {
+        return c.prioritaria() && !disponibili(operatori).isEmpty();
+    }
+    public String assegna(Chiamata c, List<Operatore> operatori) {
+        Operatore op = disponibili(operatori).stream()
+                .min((a, b) -> Integer.compare(a.chiamateAttive(), b.chiamateAttive()))
+                .orElseThrow();
+        return assegnata(c, op);
+    }
+}
+
+@Component
+@Order(3)
+class ARotazione implements StrategiaAssegnazione {
+    private final AtomicInteger prossimo = new AtomicInteger(0);
+
+    public boolean applicabile(Chiamata c, List<Operatore> operatori) {
+        return !disponibili(operatori).isEmpty();
+    }
+    public String assegna(Chiamata c, List<Operatore> operatori) {
+        List<Operatore> liberi = disponibili(operatori);
+        Operatore op = liberi.get(Math.floorMod(prossimo.getAndIncrement(), liberi.size()));
+        return assegnata(c, op);
+    }
+}
+
+@Component
+@Order(4)                                                    // fallback: nessun operatore disponibile
+class CodaAttesa implements StrategiaAssegnazione {
+    public boolean applicabile(Chiamata c, List<Operatore> operatori) { return true; }
+    public String assegna(Chiamata c, List<Operatore> operatori) {
+        return "Chiamata di " + c.cliente() + " in coda d'attesa";
+    }
+}
+
+@Service
+class Assegnazione {
+    private final List<StrategiaAssegnazione> strategie;     // Spring le inietta già in ordine di @Order
+
+    Assegnazione(List<StrategiaAssegnazione> strategie) { this.strategie = strategie; }
+
+    String assegna(Chiamata c, List<Operatore> operatori) {
+        return strategie.stream()
+                .filter(s -> s.applicabile(c, operatori))     // prima strategia applicabile
+                .findFirst()
+                .orElseThrow()                                // il fallback garantisce che esista
+                .assegna(c, operatori);
+    }
+}
+```
+
+Output (con questa demo nel `main`):
+
+```text
+Chiamata di Rossi assegnata a Anna
+Chiamata di Bianchi assegnata a Anna
+Chiamata di Verdi assegnata a Anna
+Chiamata di Gialli assegnata a Luca
+Chiamata di Neri in coda d'attesa
+```
+
+- `Assegnazione` non contiene nessun `if`: sceglie la prima strategia la cui `applicabile` è vera.
+- Con `@Order` la più specifica (competenza) viene provata per prima, il fallback `CodaAttesa` per ultimo.
+- `ARotazione` usa un contatore: `Verdi` e `Gialli` vanno ad Anna e Luca a turno, saltando Marco che è occupato.
+- Se tutti sono occupati, nessuna strategia tranne il fallback è applicabile, e il cliente riceve il messaggio di coda.
