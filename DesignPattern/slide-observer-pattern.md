@@ -155,6 +155,84 @@ class OffertaPremium {
 - `condition` filtra gli eventi con SpEL. Qui il listener riceve solo i piani `premium`.
 - Il metodo `registra` è `public` e viene chiamato da un altro bean, così il proxy di `@Transactional` funziona.
 
+### Extra - Subject
+
+Cosa mostra: un'interfaccia `Subject` affiancata a `Observer`. La classe concreta `NewsLetter` implementa `Subject` e avvisa i propri osservatori quando cambia il topic; `NewsApplication` è un osservatore concreto che reagisce all'aggiornamento.
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+interface Observer{
+    void update(String topic);
+}
+
+interface Subject{
+    void addObserver(Observer obs);
+    void removeObserver(Observer obs);
+    void notifyObservers();
+}
+
+//Concrete Subject
+class NewsLetter implements Subject{
+    private List<Observer> observers = new ArrayList<>();
+    private String topic = "";
+    
+    @Override
+    public void addObserver(Observer obs) {
+        observers.add(obs);
+    }
+
+    @Override
+    public void removeObserver(Observer obs) {
+        observers.remove(obs);
+    }
+
+    @Override
+    public void notifyObservers() {
+        for (Observer obs : observers) {
+            obs.update(topic);
+        }
+    }
+
+    public void setTopic(String newTopic){
+        this.topic = newTopic;
+        notifyObservers();
+    }
+}
+
+//Concrete Observers
+class NewsApplication implements Observer{
+    private String topic;
+
+    @Override
+    public void update(String topic){
+        this.topic = topic;
+        display();
+    }
+
+    private void display(){
+        System.out.println("App News: Topic updated - " + topic);
+    }
+}
+
+//Utilizzo
+public class Main{
+    public static void main(String[] args) {
+        NewsLetter newsLetter = new NewsLetter();
+        Observer newsApp = new NewsApplication();
+
+        newsLetter.addObserver(newsApp);
+
+        newsLetter.setTopic("Politica");
+    }
+}
+```
+
+- `Subject` e `Observer` sono interfacce: `NewsLetter` conosce solo `Observer`, non la classe `NewsApplication`.
+- `addObserver` e `removeObserver` gestiscono le iscrizioni. Un nuovo osservatore si aggiunge senza modificare `NewsLetter`.
+- `setTopic` salva il nuovo topic e chiama `notifyObservers()`, quindi ogni osservatore iscritto riceve l'aggiornamento.
+
 ## Esercizi
 
 ### Facile
