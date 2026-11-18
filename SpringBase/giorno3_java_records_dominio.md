@@ -52,7 +52,7 @@ public class Run {
     private String title;
     private LocalDateTime startedOn;
     private LocalDateTime completedOn;
-    private Integer miles;
+    private Integer km;
     private Location location;
 
     // Costruttore
@@ -342,12 +342,12 @@ public record Run(
     String title,
     LocalDateTime startedOn,
     LocalDateTime completedOn,
-    Integer miles,
+    Integer km,
     Location location
 ) {
     // Validazione nel costruttore canonico compatto
     public Run {
-        if (miles < 0) {
+        if (km < 0) {
             throw new IllegalArgumentException("Miles cannot be negative");
         }
         if (completedOn.isBefore(startedOn)) {
