@@ -1073,6 +1073,9 @@ spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
 spring.jpa.hibernate.ddl-auto=create-drop
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
+# Esegue la query dopo la creazione delle Entity
+spring.jpa.defer-datasource-initialization=true
+
 
 spring.h2.console.enabled=true
 ```
