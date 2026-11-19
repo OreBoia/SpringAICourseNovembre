@@ -1,0 +1,13 @@
+package com.example.demo.DTO;
+
+import java.time.LocalDateTime;
+
+// DTO di output: espone solo i campi che il client deve vedere
+public record RunResponse(
+        Integer id,
+        String title,
+        LocalDateTime startedOn,
+        LocalDateTime completedOn,
+        double miles,
+        String location  // String invece di enum: più leggibile per il client
+) {}
