@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Micro chat</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1d232b; --muted: #5d6875; --line: #dde1e6;
+    --accent: #2f6f4f; --accent-ink: #ffffff; --soft: #e9f2ed; --chip: #eef1f4; --err: #a1262b; --err-soft: #fbecec;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181d; --card: #1c2229; --ink: #e6e9ed; --muted: #9aa5b1; --line: #2e363f;
+      --accent: #6cc395; --accent-ink: #0f1a14; --soft: #20302a; --chip: #262e37; --err: #ef7d82; --err-soft: #3a2224;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+         display: flex; flex-direction: column; }
+  header { background: var(--card); border-bottom: 1px solid var(--line); }
+  .barra { max-width: 820px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 12px;
+           align-items: center; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 1.15rem; }
+  .info { color: var(--muted); font-size: .85rem; flex: 1 1 240px; min-width: 0; }
+  .info code { font-family: var(--mono); color: var(--ink); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .75rem;
+           border: 1px solid var(--line); margin-left: 4px; }
+  .badge.on { background: var(--soft); border-color: var(--accent); color: var(--ink); }
+  .bottone { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px;
+             padding: 6px 12px; cursor: pointer; font: inherit; font-size: .9rem; white-space: nowrap; }
+  .bottone:hover { border-color: var(--accent); }
+  a.bottone { text-decoration: none; }
+  main { flex: 1; overflow-y: auto; }
+  #conversazione { max-width: 820px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .vuota { color: var(--muted); text-align: center; margin-top: 10vh; }
+  .msg { max-width: 88%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.utente { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 4px; }
+  .msg.assistente { align-self: flex-start; background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg.assistente.errore { background: var(--err-soft); border-color: var(--err); color: var(--err); }
+  .strumenti { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .strumenti:empty { display: none; }
+  .chip { font-family: var(--mono); font-size: .8rem; background: var(--chip); border: 1px solid var(--line);
+          border-radius: 6px; padding: 2px 8px; white-space: normal; }
+  .chip::before { content: "⚙ "; color: var(--accent); }
+  details.fonti { margin-top: 8px; font-size: .85rem; color: var(--muted); white-space: normal; }
+  details.fonti ul { margin: 6px 0 0; padding-left: 18px; }
+  .cursore::after { content: "▍"; color: var(--accent); animation: lampeggia 1s steps(1) infinite; }
+  @keyframes lampeggia { 50% { opacity: 0; } }
+  footer { background: var(--card); border-top: 1px solid var(--line); }
+  .composizione { max-width: 820px; margin: 0 auto; padding: 10px 16px 14px; }
+  .suggerimenti { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .suggerimenti button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px;
+                         padding: 4px 10px; font: inherit; font-size: .8rem; cursor: pointer; }
+  form { display: flex; gap: 8px; align-items: flex-end; }
+  textarea { flex: 1; min-width: 0; resize: none; font: inherit; padding: 10px 12px; border-radius: 10px;
+             border: 1px solid var(--line); background: var(--bg); color: var(--ink); max-height: 30vh; }
+  .invia { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 10px 18px;
+           font: inherit; font-weight: 600; cursor: pointer; }
+  .invia:disabled { opacity: .6; cursor: progress; }
+  .nota { color: var(--muted); font-size: .75rem; margin: 6px 0 0; }
+  @media (prefers-reduced-motion: reduce) { .cursore::after { animation: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="barra">
+    <h1>Micro chat</h1>
+    <div class="info" id="info">Caricamento…</div>
+    <span class="info" id="memoria" style="flex:0 0 auto"></span>
+    <button class="bottone" id="nuova" type="button">Nuova conversazione</button>
+    <a class="bottone" href="/">← Tappe</a>
+  </div>
+</header>
+
+<main>
+  <div id="conversazione" aria-live="polite">
+    <p class="vuota" id="vuota">Chiedi qualcosa sul magazzino o sulle regole aziendali.</p>
+  </div>
+</main>
+
+<footer>
+  <div class="composizione">
+    <div class="suggerimenti">
+      <button type="button">Quanti MOUSE-01 abbiamo?</button>
+      <button type="button">Riserva 3 pezzi di MON-27</button>
+      <button type="button">E ne restano quanti?</button>
+      <button type="button">Ogni quanto scade la password?</button>
+      <button type="button">Mi chiamo Anna</button>
+      <button type="button">Come mi chiamo?</button>
+    </div>
+    <form id="form">
+      <textarea id="testo" rows="1" placeholder="Scrivi un messaggio…" aria-label="Messaggio"></textarea>
+      <button class="invia" id="invia">Invia</button>
+    </form>
+    <p class="nota">Invio per inviare, Maiusc+Invio per andare a capo. La memoria è legata a questa sessione del browser.</p>
+  </div>
+</footer>
+
+<script src="sse.js"></script>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const conversazione = $('#conversazione');
+  const area = $('main');
+  let inCorso = false;
+
+  // --- intestazione e contatore della memoria ---
+  async function aggiornaStato(statoGiaNoto) {
+    const s = statoGiaNoto || await (await fetch('/chat/stato')).json();
+    const info = $('#info');
+    info.textContent = '';
+    info.append('Modello ');
+    const modello = document.createElement('code'); modello.textContent = s.modello; info.append(modello);
+    info.append(' · profili ');
+    const profili = document.createElement('code'); profili.textContent = s.profili; info.append(profili);
+    const rag = document.createElement('span');
+    rag.className = 'badge' + (s.rag ? ' on' : '');
+    rag.textContent = s.rag ? 'RAG attivo' : 'RAG spento';
+    rag.title = s.rag ? 'Risponde anche dal regolamento aziendale' : 'Avvia con il profilo rag per attivarlo';
+    info.append(rag);
+    mostraMemoria(s.messaggiInMemoria, s.finestra);
+  }
+  function mostraMemoria(n, finestra) {
+    $('#memoria').textContent = 'Memoria: ' + n + '/' + finestra + ' messaggi';
+  }
+
+  // --- bolle ---
+  function nuovaBolla(ruolo, testo = '') {
+    $('#vuota')?.remove();
+    const bolla = document.createElement('div');
+    bolla.className = 'msg ' + ruolo;
+    if (ruolo === 'assistente') {
+      bolla.innerHTML = '<div class="strumenti"></div><span class="testo"></span>';
+      bolla.querySelector('.testo').textContent = testo;
+    } else {
+      bolla.textContent = testo;
+    }
+    conversazione.append(bolla);
+    area.scrollTop = area.scrollHeight;
+    return bolla;
+  }
+
+  function descriviStrumento(c) {
+    let argomenti = c.argomenti;
+    try { argomenti = Object.values(JSON.parse(c.argomenti)).join(', '); } catch (e) { /* lasciato com'è */ }
+    return c.nome + '(' + argomenti + ') → ' + c.risultato;
+  }
+
+  function aggiungiFonti(bolla, fonti) {
+    const d = document.createElement('details');
+    d.className = 'fonti';
+    d.innerHTML = '<summary></summary><ul></ul>';
+    d.querySelector('summary').textContent = 'Fonti dal regolamento (' + fonti.length + ')';
+    for (const f of fonti) {
+      const li = document.createElement('li');
+      li.textContent = f;
+      d.querySelector('ul').append(li);
+    }
+    bolla.append(d);
+  }
+
+  // --- invio di un messaggio e lettura dello stream ---
+  async function invia(testo) {
+    if (inCorso || !testo.trim()) return;
+    inCorso = true;
+    $('#invia').disabled = true;
+    nuovaBolla('utente', testo);
+    const bolla = nuovaBolla('assistente');
+    const spanTesto = bolla.querySelector('.testo');
+    spanTesto.classList.add('cursore');
+
+    try {
+      const risposta = await fetch('/chat/messaggio', {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: testo,
+      });
+      if (!risposta.ok) {
+        const corpo = await risposta.json().catch(() => ({}));
+        throw new Error(corpo.message || ('HTTP ' + risposta.status));
+      }
+      await leggiEventiSse(risposta, (evento, dati) => {
+        const d = JSON.parse(dati);
+        if (evento === 'testo') spanTesto.textContent += d.testo;
+        else if (evento === 'strumento') {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = descriviStrumento(d);
+          bolla.querySelector('.strumenti').append(chip);
+        }
+        else if (evento === 'fonti') aggiungiFonti(bolla, d);
+        else if (evento === 'errore') { bolla.classList.add('errore'); spanTesto.textContent += (spanTesto.textContent ? '\n' : '') + d.messaggio; }
+        else if (evento === 'fine') mostraMemoria(d.messaggiInMemoria, d.finestra);
+        area.scrollTop = area.scrollHeight;
+      });
+    } catch (e) {
+      bolla.classList.add('errore');
+      spanTesto.textContent = 'Server non raggiungibile o errore: ' + e.message;
+    } finally {
+      spanTesto.classList.remove('cursore');
+      inCorso = false;
+      $('#invia').disabled = false;
+      $('#testo').focus();
+    }
+  }
+
+  // --- eventi della pagina ---
+  $('#form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const t = $('#testo');
+    const testo = t.value;
+    t.value = '';
+    t.style.height = '';
+    invia(testo);
+  });
+  $('#testo').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); $('#form').requestSubmit(); }
+  });
+  $('#testo').addEventListener('input', (ev) => {
+    ev.target.style.height = '';
+    ev.target.style.height = ev.target.scrollHeight + 'px';
+  });
+  document.querySelectorAll('.suggerimenti button').forEach((b) =>
+    b.addEventListener('click', () => invia(b.textContent)));
+
+  $('#nuova').addEventListener('click', async () => {
+    const s = await (await fetch('/chat/nuova', { method: 'POST' })).json();
+    conversazione.innerHTML = '<p class="vuota" id="vuota">Conversazione azzerata: il modello non ricorda più nulla.</p>';
+    aggiornaStato(s);
+  });
+
+  // --- all'apertura: stato e conversazione già in memoria (sopravvive al refresh della pagina) ---
+  (async () => {
+    try {
+      await aggiornaStato();
+      const storia = await (await fetch('/chat/storia')).json();
+      for (const b of storia) nuovaBolla(b.ruolo, b.testo);
+    } catch (e) {
+      $('#info').textContent = 'Server non raggiungibile: avvia l\'applicazione con ./mvnw spring-boot:run';
+    }
+  })();
+</script>
+</body>
+</html>

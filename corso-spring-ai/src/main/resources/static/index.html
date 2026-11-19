@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corso Spring AI</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1d232b; --muted: #5d6875; --line: #dde1e6;
+    --accent: #2f6f4f; --accent-ink: #ffffff; --soft: #e9f2ed; --warn: #9a5b00; --err: #a1262b;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181d; --card: #1c2229; --ink: #e6e9ed; --muted: #9aa5b1; --line: #2e363f;
+      --accent: #6cc395; --accent-ink: #0f1a14; --soft: #20302a; --warn: #e0a64a; --err: #ef7d82;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 20px 16px 8px; max-width: 920px; margin: 0 auto; }
+  h1 { margin: 0; font-size: 1.5rem; }
+  .info { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+  .info code { font-family: var(--mono); color: var(--ink); }
+  nav { max-width: 920px; margin: 8px auto 0; padding: 0 16px; display: flex; gap: 6px; flex-wrap: wrap; }
+  nav button, .esempio { border: 1px solid var(--line); background: var(--card); color: var(--ink);
+               padding: 6px 12px; border-radius: 999px; cursor: pointer; font: inherit; font-size: .9rem; }
+  nav a.vai { border: 1px solid var(--accent); color: var(--ink); background: var(--soft); padding: 6px 12px;
+              border-radius: 999px; font-size: .9rem; text-decoration: none; font-weight: 600; }
+  nav button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  main { max-width: 920px; margin: 12px auto 40px; padding: 0 16px; }
+  section { display: none; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  section.attiva { display: block; }
+  h2 { margin: 0 0 4px; font-size: 1.15rem; }
+  .tappa { color: var(--muted); font-size: .85rem; margin: 0 0 14px; }
+  .riga { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  input, select, textarea { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+                            background: var(--bg); color: var(--ink); min-width: 0; }
+  input, textarea { flex: 1 1 240px; }
+  textarea { width: 100%; min-height: 90px; }
+  .azione { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px;
+            padding: 8px 16px; cursor: pointer; font: inherit; font-weight: 600; }
+  .azione:disabled { opacity: .6; cursor: progress; }
+  .out { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+         padding: 12px; min-height: 48px; font-size: .95rem; overflow-wrap: anywhere; }
+  .out.errore { color: var(--err); }
+  .nota { color: var(--muted); font-size: .85rem; margin-top: 10px; }
+  .chat { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .msg { padding: 8px 12px; border-radius: 10px; max-width: 85%; white-space: pre-wrap; }
+  .msg.utente { align-self: flex-end; background: var(--accent); color: var(--accent-ink); }
+  .msg.ai { align-self: flex-start; background: var(--soft); }
+  .msg .chi { display: block; font-size: .75rem; opacity: .75; }
+  .risultato { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; margin: 6px 0; }
+  .barra { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+  .barra > span { display: block; height: 100%; background: var(--accent); }
+  .punteggio { font-family: var(--mono); font-size: .9rem; text-align: right; }
+  .avviso { background: var(--soft); border-left: 4px solid var(--warn); padding: 10px 12px; border-radius: 6px; }
+  .grande { font-size: 2rem; font-weight: 700; font-family: var(--mono); }
+  h3 { font-size: 1rem; margin: 18px 0 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Corso Spring AI — demo in aula</h1>
+  <div class="info" id="info">Profilo e modello: caricamento…</div>
+</header>
+
+<nav role="tablist">
+  <button role="tab" data-tab="chat" aria-selected="true">1 · Chat</button>
+  <button role="tab" data-tab="streaming">3 · Streaming</button>
+  <button role="tab" data-tab="magazzino">5 · Tools</button>
+  <button role="tab" data-tab="memoria">6 · Memoria</button>
+  <button role="tab" data-tab="rag">9 · RAG</button>
+  <a class="vai" href="/chat.html">10 · Micro chat →</a>
+</nav>
+
+<main>
+  <!-- Tappa 1 -->
+  <section id="chat" class="attiva">
+    <h2>Chat semplice</h2>
+    <p class="tappa">Tappa 1 · <code>GET /ai/chat</code> · <code>prompt().user().call().content()</code></p>
+    <form class="riga" data-form="chat">
+      <input name="message" value="Spiega in due righe cos'è un LLM" aria-label="Messaggio">
+      <button class="azione">Invia</button>
+    </form>
+    <div class="out" id="chat-out"></div>
+    <p class="nota">Prova: invia due volte lo stesso messaggio. Il testo cambia: il modello non è deterministico.</p>
+  </section>
+
+  <!-- Tappa 3 -->
+  <section id="streaming">
+    <h2>Storia in streaming</h2>
+    <p class="tappa">Tappa 3 · <code>GET /ai/storia</code> · <code>stream()</code> + Server-Sent Events</p>
+    <form class="riga" data-form="streaming">
+      <input name="tema" value="un robot bibliotecario" aria-label="Tema">
+      <button class="azione">Racconta</button>
+    </form>
+    <div class="out" id="streaming-out"></div>
+    <p class="nota">Il testo compare a pezzi mentre il modello lo genera, invece di arrivare tutto alla fine.</p>
+  </section>
+
+  <!-- Tappa 5 -->
+  <section id="magazzino">
+    <h2>Assistente di magazzino</h2>
+    <p class="tappa">Tappa 5 · <code>GET /ai/magazzino</code> · <code>@Tool</code> giacenza / riserva</p>
+    <form class="riga" data-form="magazzino">
+      <input name="domanda" value="Quanti MOUSE-01 abbiamo?" aria-label="Domanda">
+      <button class="azione">Chiedi</button>
+    </form>
+    <div class="riga">
+      <button class="esempio" data-target="magazzino" data-testo="Riserva 3 pezzi di MON-27">Riserva 3 MON-27</button>
+      <button class="esempio" data-target="magazzino" data-testo="Quanti MON-99 abbiamo?">Codice inesistente</button>
+      <button class="esempio" data-target="magazzino" data-testo="Che tempo fa a Roma?">Fuori tema</button>
+    </div>
+    <div class="out" id="magazzino-out"></div>
+    <p class="nota">Guarda la console del server: le righe <code>[tool] …</code> provano che il metodo Java è stato chiamato.
+      Codici disponibili: MOUSE-01 (25), TAST-02 (0), MON-27 (4).</p>
+  </section>
+
+  <!-- Tappa 6 -->
+  <section id="memoria">
+    <h2>Chat con memoria</h2>
+    <p class="tappa">Tappa 6 · <code>POST /ai/assistente/{sessione}</code> confrontato con <code>POST /demo/senza-memoria</code></p>
+    <div class="riga">
+      <label>Modalità
+        <select id="modalita">
+          <option value="assistente">con memoria (MessageChatMemoryAdvisor)</option>
+          <option value="senza">senza memoria (stateless)</option>
+        </select>
+      </label>
+      <label>Sessione
+        <select id="sessione">
+          <option>anna</option><option>luca</option>
+        </select>
+      </label>
+    </div>
+    <div class="chat" id="memoria-chat"></div>
+    <form class="riga" data-form="memoria">
+      <input name="messaggio" value="Ciao, sono Anna. Quanti MON-27 abbiamo?" aria-label="Messaggio">
+      <button class="azione">Invia</button>
+    </form>
+    <p class="nota">Scenario: presentati come Anna, poi chiedi "Come mi chiamo?". Ripeti con la sessione
+      <i>luca</i> e con la modalità senza memoria.</p>
+  </section>
+
+  <!-- Tappa 9 -->
+  <section id="rag">
+    <h2>RAG sul regolamento aziendale</h2>
+    <p class="tappa">Tappa 9 · profilo <code>rag</code> · embedding → ricerca → risposta</p>
+    <div id="rag-spento" class="avviso" hidden>
+      Il profilo <code>rag</code> non è attivo. Riavvia con
+      <code>./mvnw spring-boot:run -Dspring-boot.run.profiles=groq,rag</code>
+    </div>
+    <div id="rag-acceso">
+      <h3>1 · Embedding e similarità</h3>
+      <form class="riga" data-form="similarita">
+        <input name="a" value="Quando posso andare in ferie?" aria-label="Frase A">
+        <input name="b" value="Come chiedo giorni di vacanza?" aria-label="Frase B">
+        <button class="azione">Confronta</button>
+      </form>
+      <div class="out" id="similarita-out"></div>
+
+      <h3>2 · Ricerca nel VectorStore (senza modello di chat)</h3>
+      <form class="riga" data-form="cerca">
+        <input name="q" value="Come chiedo le ferie?" aria-label="Ricerca">
+        <button class="azione">Cerca</button>
+      </form>
+      <div class="out" id="cerca-out"></div>
+
+      <h3>3 · Domanda con RAG (QuestionAnswerAdvisor)</h3>
+      <form class="riga" data-form="chiedi">
+        <input name="domanda" value="Ogni quanto scade la password?" aria-label="Domanda">
+        <button class="azione">Chiedi</button>
+      </form>
+      <div class="out" id="chiedi-out"></div>
+      <p class="nota">Prova una domanda fuori tema ("Chi ha vinto i mondiali del 2006?") e guarda i punteggi della ricerca.</p>
+    </div>
+  </section>
+</main>
+
+<script src="sse.js"></script>
+<script>
+  const $ = (sel) => document.querySelector(sel);
+
+  // --- schede ---
+  document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach((x) => x.setAttribute('aria-selected', x === b));
+    document.querySelectorAll('section').forEach((s) => s.classList.toggle('attiva', s.id === b.dataset.tab));
+  }));
+
+  // --- utilità ---
+  async function richiesta(url, opzioni) {
+    const r = await fetch(url, opzioni);
+    const testo = await r.text();
+    if (!r.ok) {
+      let msg = testo;
+      try { const j = JSON.parse(testo); msg = j.message || j.error || testo; } catch (e) { /* testo semplice */ }
+      throw new Error('HTTP ' + r.status + ': ' + msg);
+    }
+    return testo;
+  }
+  function mostra(id, testo, errore = false) {
+    const el = $('#' + id);
+    el.textContent = testo;
+    el.classList.toggle('errore', errore);
+  }
+  async function conAttesa(form, fn) {
+    const bottone = form.querySelector('.azione');
+    bottone.disabled = true;
+    try { await fn(); } finally { bottone.disabled = false; }
+  }
+  const valore = (form, nome) => form.elements[nome].value;
+
+  // --- intestazione: profilo e modello (tappa 7) ---
+  richiesta('/ai/provider').then((t) => {
+    const p = JSON.parse(t);
+    $('#info').innerHTML = 'Profili attivi: <code></code> · modello: <code></code>';
+    const codes = $('#info').querySelectorAll('code');
+    codes[0].textContent = p.profilo;
+    codes[1].textContent = p.modello;
+    const ragAttivo = p.profilo.split(',').includes('rag');
+    $('#rag-spento').hidden = ragAttivo;
+    $('#rag-acceso').hidden = !ragAttivo;
+  }).catch((e) => { $('#info').textContent = 'Server non raggiungibile: ' + e.message; });
+
+  // --- esempi rapidi ---
+  document.querySelectorAll('.esempio').forEach((b) => b.addEventListener('click', () => {
+    const form = document.querySelector('[data-form="' + b.dataset.target + '"]');
+    form.elements[0].value = b.dataset.testo;
+    form.requestSubmit();
+  }));
+
+  // --- gestori dei form ---
+  const gestori = {
+    chat: async (f) => mostra('chat-out',
+      await richiesta('/ai/chat?message=' + encodeURIComponent(valore(f, 'message')))),
+
+    // fetch + sse.js invece di EventSource: EventSource toglierebbe lo spazio iniziale dei token (" una" → "una")
+    streaming: async (f) => {
+      mostra('streaming-out', '');
+      const risposta = await fetch('/ai/storia?tema=' + encodeURIComponent(valore(f, 'tema')));
+      await leggiEventiSse(risposta, (_, dati) => { $('#streaming-out').textContent += dati; });
+    },
+
+    magazzino: async (f) => mostra('magazzino-out',
+      await richiesta('/ai/magazzino?domanda=' + encodeURIComponent(valore(f, 'domanda')))),
+
+    memoria: async (f) => {
+      const testo = valore(f, 'messaggio');
+      const sessione = $('#sessione').value;
+      const conMemoria = $('#modalita').value === 'assistente';
+      aggiungiMessaggio('utente', (conMemoria ? sessione : 'senza memoria'), testo);
+      f.elements.messaggio.value = '';
+      const url = conMemoria ? '/ai/assistente/' + encodeURIComponent(sessione) : '/demo/senza-memoria';
+      try {
+        const risposta = await richiesta(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: testo });
+        aggiungiMessaggio('ai', 'assistente', risposta);
+      } catch (e) {
+        aggiungiMessaggio('ai', 'errore', e.message);
+      }
+    },
+
+    similarita: async (f) => {
+      const d = JSON.parse(await richiesta('/rag/similarita?a=' + encodeURIComponent(valore(f, 'a'))
+        + '&b=' + encodeURIComponent(valore(f, 'b'))));
+      const el = $('#similarita-out');
+      el.classList.remove('errore');
+      el.innerHTML = '<div class="grande"></div><div>similarità del coseno · vettori da <b></b> numeri · '
+        + 'primi valori di A: <code></code></div>';
+      el.querySelector('.grande').textContent = d.similarita.toFixed(3);
+      el.querySelector('b').textContent = d.dimensioni;
+      el.querySelector('code').textContent = '[' + d.primiValoriDiA.map((x) => x.toFixed(3)).join(', ') + ', …]';
+    },
+
+    cerca: async (f) => {
+      const trovati = JSON.parse(await richiesta('/rag/cerca?q=' + encodeURIComponent(valore(f, 'q'))));
+      const el = $('#cerca-out');
+      el.classList.remove('errore');
+      el.replaceChildren(...trovati.map((t) => {
+        const riga = document.createElement('div');
+        riga.className = 'risultato';
+        const p = Math.max(0, Math.min(1, t.punteggio));
+        riga.innerHTML = '<div class="punteggio"></div><div><div class="testo"></div><div class="barra"><span></span></div></div>';
+        riga.querySelector('.punteggio').textContent = t.punteggio.toFixed(3);
+        riga.querySelector('.testo').textContent = t.testo;
+        riga.querySelector('.barra span').style.width = (p * 100) + '%';
+        return riga;
+      }));
+    },
+
+    chiedi: async (f) => mostra('chiedi-out',
+      await richiesta('/rag/chiedi?domanda=' + encodeURIComponent(valore(f, 'domanda')))),
+  };
+
+  const uscite = { chat: 'chat-out', streaming: 'streaming-out', magazzino: 'magazzino-out',
+                   similarita: 'similarita-out', cerca: 'cerca-out', chiedi: 'chiedi-out' };
+
+  document.querySelectorAll('form[data-form]').forEach((f) => f.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const nome = f.dataset.form;
+    if (uscite[nome] && nome !== 'streaming') mostra(uscite[nome], '…');
+    conAttesa(f, () => gestori[nome](f).catch((e) => mostra(uscite[nome], e.message, true)));
+  }));
+
+  function aggiungiMessaggio(tipo, chi, testo) {
+    const m = document.createElement('div');
+    m.className = 'msg ' + tipo;
+    m.innerHTML = '<span class="chi"></span>';
+    m.querySelector('.chi').textContent = chi;
+    m.append(document.createTextNode(testo));
+    $('#memoria-chat').append(m);
+  }
+</script>
+</body>
+</html>
